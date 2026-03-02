@@ -1,0 +1,42 @@
+/**
+ * @license
+ * Copyright 2025 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ */
+import stripAnsi from 'strip-ansi';
+export function checkInput(input) {
+    if (input === null || input === undefined) {
+        return false;
+    }
+    const trimmed = input.trim();
+    if (!trimmed) {
+        return false;
+    }
+    if (!/^(?:\[|\{)/.test(trimmed)) {
+        return false;
+    }
+    if (stripAnsi(trimmed) !== trimmed)
+        return false;
+    return true;
+}
+export function tryParseJSON(input) {
+    if (!checkInput(input))
+        return null;
+    const trimmed = input.trim();
+    try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed === null || typeof parsed !== 'object') {
+            return null;
+        }
+        if (Array.isArray(parsed) && parsed.length === 0) {
+            return null;
+        }
+        if (!Array.isArray(parsed) && Object.keys(parsed).length === 0)
+            return null;
+        return parsed;
+    }
+    catch (_err) {
+        return null;
+    }
+}
+//# sourceMappingURL=jsonoutput.js.map

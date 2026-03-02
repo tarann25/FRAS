@@ -1,0 +1,16 @@
+import { jsx as _jsx } from "react/jsx-runtime";
+import { Box, Text } from 'ink';
+import { theme } from '../../semantic-colors.js';
+/**
+ * A shared footer component for dialogs to ensure consistent styling and formatting
+ * of keyboard shortcuts and help text.
+ */
+export const DialogFooter = ({ primaryAction, navigationActions, cancelAction = 'Esc to cancel', }) => {
+    const parts = [primaryAction];
+    if (navigationActions) {
+        parts.push(navigationActions);
+    }
+    parts.push(cancelAction);
+    return (_jsx(Box, { marginTop: 1, children: _jsx(Text, { color: theme.text.secondary, children: parts.join(' · ') }) }));
+};
+//# sourceMappingURL=DialogFooter.js.map

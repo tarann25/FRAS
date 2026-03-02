@@ -1,0 +1,270 @@
+PROJECT OBJECTIVE                                                                                                                                                         
+   Build a real-time face recognition attendance system that:                                                                                                                
+   - Registers users with face data                                                                                                                                          
+   - Recognizes faces via webcam                                                                                                                                             
+   - Marks attendance automatically                                                                                                                                          
+   - Stores records in a database                                                                                                                                            
+   - Provides a web dashboard                                                                                                                                                
+                                                                                                                                                                             
+   TECH STACK                                                                                                                                                                
+   - Python 3.10+                                                                                                                                                            
+   - Flask (backend)                                                                                                                                                         
+   - OpenCV (video capture)                                                                                                                                                  
+   - face_recognition (face encoding + matching)                                                                                                                             
+   - NumPy (vector operations)                                                                                                                                               
+   - Pandas (attendance logs)                                                                                                                                                
+   - SQLite (database)                                                                                                                                                       
+   - HTML/CSS/JS (frontend)                                                                                                                                                  
+                                                                                                                                                                             
+   ────────────────────────────────────                                                                                                                                      
+   PHASE 0 — ENVIRONMENT SETUP (FOUNDATION)                                                                                                                                  
+   ────────────────────────────────────                                                                                                                                      
+                                                                                                                                                                             
+   Tasks:                                                                                                                                                                    
+   1. Create virtual environment                                                                                                                                             
+   2. Install dependencies                                                                                                                                                   
+   3. Verify webcam access                                                                                                                                                   
+   4. Verify face_recognition works                                                                                                                                          
+                                                                                                                                                                             
+   Required packages:                                                                                                                                                        
+   pip install flask opencv-python face-recognition numpy pandas                                                                                                             
+                                                                                                                                                                             
+   Validation script requirements:                                                                                                                                           
+   - Open webcam                                                                                                                                                             
+   - Detect at least one face                                                                                                                                                
+   - Print encoding length (must be 128)                                                                                                                                     
+                                                                                                                                                                             
+   Exit condition:                                                                                                                                                           
+   System detects a face successfully.                                                                                                                                       
+                                                                                                                                                                             
+   ────────────────────────────────────                                                                                                                                      
+   PHASE 1 — PROJECT STRUCTURE                                                                                                                                               
+   ────────────────────────────────────                                                                                                                                      
+                                                                                                                                                                             
+   Create this folder architecture:                                                                                                                                          
+                                                                                                                                                                             
+   face_attendance/                                                                                                                                                          
+   │                                                                                                                                                                         
+   ├── app.py                                                                                                                                                                
+   ├── database.db                                                                                                                                                           
+   ├── requirements.txt                                                                                                                                                      
+   │                                                                                                                                                                         
+   ├── static/                                                                                                                                                               
+   │   ├── css/                                                                                                                                                              
+   │   └── js/                                                                                                                                                               
+   │                                                                                                                                                                         
+   ├── templates/                                                                                                                                                            
+   │   ├── index.html                                                                                                                                                        
+   │   ├── register.html                                                                                                                                                     
+   │   └── dashboard.html                                                                                                                                                    
+   │                                                                                                                                                                         
+   ├── dataset/                                                                                                                                                              
+   │   └── (user images stored here)                                                                                                                                         
+   │                                                                                                                                                                         
+   ├── encodings/                                                                                                                                                            
+   │   └── encodings.pkl                                                                                                                                                     
+   │                                                                                                                                                                         
+   └── utils/                                                                                                                                                                
+       ├── face_utils.py                                                                                                                                                     
+       ├── db_utils.py                                                                                                                                                       
+       └── attendance_utils.py                                                                                                                                               
+                                                                                                                                                                             
+   IMPORTANT:                                                                                                                                                                
+   Code must be modular. Avoid monolithic scripts.                                                                                                                           
+                                                                                                                                                                             
+   ────────────────────────────────────                                                                                                                                      
+   PHASE 2 — FACE REGISTRATION MODULE                                                                                                                                        
+   ────────────────────────────────────                                                                                                                                      
+                                                                                                                                                                             
+   OBJECTIVE:                                                                                                                                                                
+   Allow admin to register a new user and store their face encoding.                                                                                                         
+                                                                                                                                                                             
+   STEP 2.1 — IMAGE CAPTURE                                                                                                                                                  
+                                                                                                                                                                             
+   Implement function:                                                                                                                                                       
+   capture_user_images(user_id, num_samples=10)                                                                                                                              
+                                                                                                                                                                             
+   Requirements:                                                                                                                                                             
+   - Capture frames from webcam                                                                                                                                              
+   - Detect face                                                                                                                                                             
+   - Save cropped face images to dataset/<user_id>/                                                                                                                          
+   - Capture multiple samples (~10)                                                                                                                                          
+                                                                                                                                                                             
+   STEP 2.2 — GENERATE FACE ENCODINGS                                                                                                                                        
+                                                                                                                                                                             
+   Implement function:                                                                                                                                                       
+   encode_user_faces()                                                                                                                                                       
+                                                                                                                                                                             
+   Logic:                                                                                                                                                                    
+   For each image in dataset:                                                                                                                                                
+   1. Load image                                                                                                                                                             
+   2. Convert BGR → RGB                                                                                                                                                      
+   3. Detect face                                                                                                                                                            
+   4. Generate 128-d encoding                                                                                                                                                
+   5. Store in dictionary:                                                                                                                                                   
+      { "user_id": encoding_vector }                                                                                                                                         
+   6. Save to encodings/encodings.pkl using pickle                                                                                                                           
+                                                                                                                                                                             
+   Exit condition:                                                                                                                                                           
+   Encodings file exists and loads correctly.                                                                                                                                
+                                                                                                                                                                             
+   ────────────────────────────────────                                                                                                                                      
+   PHASE 3 — REAL-TIME FACE RECOGNITION                                                                                                                                      
+   ────────────────────────────────────                                                                                                                                      
+                                                                                                                                                                             
+   Core function:                                                                                                                                                            
+   recognize_faces_realtime()                                                                                                                                                
+                                                                                                                                                                             
+   Required pipeline per frame:                                                                                                                                              
+   1. Capture frame via OpenCV                                                                                                                                               
+   2. Resize frame (0.25 scale)                                                                                                                                              
+   3. Convert BGR → RGB                                                                                                                                                      
+   4. Detect face locations                                                                                                                                                  
+   5. Generate encodings                                                                                                                                                     
+   6. Compare with known encodings                                                                                                                                           
+   7. Find best match                                                                                                                                                        
+   8. Draw bounding box + name                                                                                                                                               
+   9. Return recognized user_id                                                                                                                                              
+                                                                                                                                                                             
+   MATCHING LOGIC (CRITICAL)                                                                                                                                                 
+                                                                                                                                                                             
+   Must use:                                                                                                                                                                 
+   - face_recognition.compare_faces()                                                                                                                                        
+   - face_recognition.face_distance()                                                                                                                                        
+                                                                                                                                                                             
+   Decision rule:                                                                                                                                                            
+   - Pick minimum distance                                                                                                                                                   
+   - Accept match if distance < 0.6                                                                                                                                          
+   - Else mark as "Unknown"                                                                                                                                                  
+                                                                                                                                                                             
+   ────────────────────────────────────                                                                                                                                      
+   PHASE 4 — DATABASE LAYER (SQLITE)                                                                                                                                         
+   ────────────────────────────────────                                                                                                                                      
+                                                                                                                                                                             
+   Create SQLite DB with two tables.                                                                                                                                         
+                                                                                                                                                                             
+   TABLE 1 — users                                                                                                                                                           
+                                                                                                                                                                             
+   users (                                                                                                                                                                   
+       id TEXT PRIMARY KEY,                                                                                                                                                  
+       name TEXT,                                                                                                                                                            
+       created_at TIMESTAMP                                                                                                                                                  
+   )                                                                                                                                                                         
+                                                                                                                                                                             
+   TABLE 2 — attendance                                                                                                                                                      
+                                                                                                                                                                             
+   attendance (                                                                                                                                                              
+       id INTEGER PRIMARY KEY AUTOINCREMENT,                                                                                                                                 
+       user_id TEXT,                                                                                                                                                         
+       date DATE,                                                                                                                                                            
+       time TIME,                                                                                                                                                            
+       status TEXT                                                                                                                                                           
+   )                                                                                                                                                                         
+                                                                                                                                                                             
+   Required functions in db_utils.py:                                                                                                                                        
+                                                                                                                                                                             
+   add_user(user_id, name)                                                                                                                                                   
+   mark_attendance(user_id)                                                                                                                                                  
+   get_today_attendance()                                                                                                                                                    
+                                                                                                                                                                             
+   ATTENDANCE LOGIC (CRITICAL)                                                                                                                                               
+                                                                                                                                                                             
+   Prevent duplicate entries per day.                                                                                                                                        
+                                                                                                                                                                             
+   Before marking attendance:                                                                                                                                                
+                                                                                                                                                                             
+   SELECT * FROM attendance                                                                                                                                                  
+   WHERE user_id=? AND date=TODAY                                                                                                                                            
+                                                                                                                                                                             
+   If exists → do nothing.                                                                                                                                                   
+                                                                                                                                                                             
+   ────────────────────────────────────                                                                                                                                      
+   PHASE 5 — FLASK WEB APPLICATION                                                                                                                                           
+   ────────────────────────────────────                                                                                                                                      
+                                                                                                                                                                             
+   Routes to implement:                                                                                                                                                      
+                                                                                                                                                                             
+   1. Home                                                                                                                                                                   
+   GET /                                                                                                                                                                     
+   Shows system status + navigation.                                                                                                                                         
+                                                                                                                                                                             
+   2. Register User                                                                                                                                                          
+   GET/POST /register                                                                                                                                                        
+                                                                                                                                                                             
+   Workflow:                                                                                                                                                                 
+   - Enter name + ID                                                                                                                                                         
+   - Capture face images                                                                                                                                                     
+   - Generate encoding                                                                                                                                                       
+   - Store in DB                                                                                                                                                             
+                                                                                                                                                                             
+   3. Start Attendance                                                                                                                                                       
+   GET /start_attendance                                                                                                                                                     
+                                                                                                                                                                             
+   Behavior:                                                                                                                                                                 
+   - Opens webcam stream                                                                                                                                                     
+   - Runs real-time recognition                                                                                                                                              
+   - Marks attendance automatically                                                                                                                                          
+                                                                                                                                                                             
+   4. Dashboard                                                                                                                                                              
+   GET /dashboard                                                                                                                                                            
+                                                                                                                                                                             
+   Display:                                                                                                                                                                  
+   - Today's attendance                                                                                                                                                      
+   - Total users                                                                                                                                                             
+   - Present count                                                                                                                                                           
+                                                                                                                                                                             
+   Use Pandas to format table.                                                                                                                                               
+                                                                                                                                                                             
+   ────────────────────────────────────                                                                                                                                      
+   PHASE 6 — PERFORMANCE OPTIMIZATION                                                                                                                                        
+   ────────────────────────────────────                                                                                                                                      
+                                                                                                                                                                             
+   Implement:                                                                                                                                                                
+                                                                                                                                                                             
+   1. Frame Skipping                                                                                                                                                         
+   Process every alternate frame:                                                                                                                                            
+   process_this_frame = not process_this_frame                                                                                                                               
+                                                                                                                                                                             
+   2. Face Encoding Cache                                                                                                                                                    
+   Load encodings once at startup, not per frame.                                                                                                                            
+                                                                                                                                                                             
+   3. Resize Before Detection                                                                                                                                                
+   Always process at 0.25 scale.                                                                                                                                             
+                                                                                                                                                                             
+   ────────────────────────────────────                                                                                                                                      
+   PHASE 7 — EDGE CASE HANDLING                                                                                                                                              
+   ────────────────────────────────────                                                                                                                                      
+                                                                                                                                                                             
+   Handle:                                                                                                                                                                   
+                                                                                                                                                                             
+   - No face in frame                                                                                                                                                        
+   - Multiple faces                                                                                                                                                          
+   - Unknown faces                                                                                                                                                           
+   - Webcam failure                                                                                                                                                          
+   - Corrupted encoding file                                                                                                                                                 
+   - Empty dataset                                                                                                                                                           
+                                                                                                                                                                             
+   ────────────────────────────────────                                                                                                                                      
+   PHASE 8 — TESTING CHECKLIST                                                                                                                                               
+   ────────────────────────────────────                                                                                                                                      
+                                                                                                                                                                             
+   Create tests verifying:                                                                                                                                                   
+                                                                                                                                                                             
+   - User registration works                                                                                                                                                 
+   - Encoding file loads                                                                                                                                                     
+   - Recognition accuracy                                                                                                                                                    
+   - Duplicate attendance prevention                                                                                                                                         
+   - Dashboard loads correctly                                                                                                                                               
+                                                                                                                                                                             
+   ────────────────────────────────────                                                                                                                                      
+   PHASE 9 — OPTIONAL ADVANCED ENHANCEMENTS                                                                                                                                  
+   ────────────────────────────────────                                                                                                                                      
+                                                                                                                                                                             
+   If time permits:                                                                                                                                                          
+                                                                                                                                                                             
+   - Liveness detection (anti-spoof)                                                                                                                                         
+   - Multi-camera support                                                                                                                                                    
+   - Email alerts                                                                                                                                                            
+   - CSV export                                                                                                                                                              
+   - Face mask handling                                                                                                                                                      
+   - GPU acceleration 
