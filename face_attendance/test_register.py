@@ -1,4 +1,4 @@
-from utils.face_utils import capture_user_images, encode_user_faces
+from utils.face_utils import capture_user_images, encode_user_faces, recognize_faces_realtime
 import os
 
 def main():
@@ -14,6 +14,8 @@ def main():
         print(f"[SUCCESS] Images captured for {user_id}.")
         # 2. Encode
         encode_user_faces()
+        #3. Recognize faces
+        recognize_faces_realtime()
     else:
         print("[FAIL] Image capture interrupted or failed.")
 
