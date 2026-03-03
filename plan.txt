@@ -243,7 +243,10 @@ PROJECT OBJECTIVE
    - Webcam failure                                                                                                                                                          
    - Corrupted encoding file                                                                                                                                                 
    - Empty dataset                                                                                                                                                           
-                                                                                                                                                                             
+   - multiple date attendance 
+   - filter at dashboard acc to subjects /  batches
+   - export data to csv at the end of dashboard
+   
    ────────────────────────────────────                                                                                                                                      
    PHASE 8 — TESTING CHECKLIST                                                                                                                                               
    ────────────────────────────────────                                                                                                                                      
