@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+    <h1>Attendance Dashboard</h1>
+    <p>Viewing attendance records for <strong>{{ date }}</strong>.</p>
+    <hr>
+    <div style="margin-bottom: 20px;">
+        <p><strong>Total Present Today:</strong> {{ attendance|length }}</p>
+    </div>
+    {% if attendance %}
+        <table>
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>Name</th>
+                    <th>Subject</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in attendance %}
+                <tr>
+                    <td>{{ row['user_id'] }}</td>
+                    <td>{{ row['name'] }}</td>
+                    <td>{{ row['subject'] }}</td>
+                    <td>{{ row['time'] }}</td>
+                    <td><span style="color: green; font-weight: bold;">{{ row['status'] }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No attendance records found for today.</p>
+    {% endif %}
+    <br>
+    <a href="{{ url_for('dashboard') }}" class="btn">Refresh Report</a>
+{% endblock %}

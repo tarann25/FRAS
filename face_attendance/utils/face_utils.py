@@ -6,6 +6,8 @@ import cv2
 import os
 import pickle
 import numpy as np
+import time
+from .db_utils import mark_attendance
 
 def capture_user_images(user_id, num_samples=10):
     """
@@ -79,8 +81,7 @@ def encode_user_faces():
                 user_encodings.append(encodings[0])
         
         if user_encodings:
-            # We store the average encoding for better stability or just a list
-            # For simplicity in this workflow, we'll store the list of encodings per user
+            # We store the list of encodings per user
             known_encodings[user_id] = user_encodings
             print(f"[SUCCESS] Encoded user: {user_id}")
 
@@ -95,23 +96,18 @@ def encode_user_faces():
     print(f"[INFO] Encodings saved to {os.path.join(encodings_dir, 'encodings.pkl')}")
     return True
 
-def recognize_faces_realtime():
+def generate_face_recognition_frames(subject="General", app=None):
     """
-    Runs webcam-based face recognition using saved encodings.
-
-    Looks for `encodings/encodings.pkg` first, then falls back to `encodings/encodings.pkl`.
-    The file is expected to contain a dict like: {user_id: [encoding1, encoding2, ...], ...}.
+    Generator for web-based video streaming. 
+    Performs recognition and updates app context with attendance events.
     """
     encodings_dir = "encodings"
-    pkg_path = os.path.join(encodings_dir, "encodings.pkg")
     pkl_path = os.path.join(encodings_dir, "encodings.pkl")
 
-    enc_path = pkg_path if os.path.exists(pkg_path) else pkl_path
-    if not os.path.exists(enc_path):
-        print(f"[ERROR] Encodings file not found. Expected `{pkg_path}` or `{pkl_path}`.")
-        return False
+    if not os.path.exists(pkl_path):
+        return
 
-    with open(enc_path, "rb") as f:
+    with open(pkl_path, "rb") as f:
         encodings_by_user = pickle.load(f)
 
     known_encodings = []
@@ -121,80 +117,51 @@ def recognize_faces_realtime():
             known_encodings.append(np.asarray(enc))
             known_labels.append(user_id)
 
-    if not known_encodings:
-        print(f"[ERROR] No encodings found inside `{enc_path}`.")
-        return False
-
     cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        print("[ERROR] Could not open webcam.")
-        return False
-
-    print("[INFO] Starting realtime recognition. Press 'q' to quit.")
-
-    process_every_n = 2 #runs every 2 frames
+    process_every_n = 2
     frame_index = 0
-    recognized_faces = []  # list of (top, right, bottom, left, name) on last processed frame
+    recognized_faces = []
 
-    try:
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                print("[ERROR] Failed to grab frame.")
-                break
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-            frame_index += 1
+        frame_index += 1
+        if frame_index % process_every_n == 0:
+            small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+            rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+            face_locations = face_recognition.face_locations(rgb_small_frame, model="hog")
+            face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
 
-            # Run heavy recognition only every 2 frames
-            if frame_index % process_every_n == 0:
-                # Resize frame to 1/4 size for faster processing
-                small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
-                rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+            new_recognized_faces = []
+            for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
+                name = "Unknown"
+                matches = face_recognition.compare_faces(known_encodings, face_encoding)
+                if any(matches):
+                    distances = face_recognition.face_distance(known_encodings, face_encoding)
+                    best_idx = int(np.argmin(distances))
+                    if matches[best_idx]:
+                        name = known_labels[best_idx]
+                        # Mark attendance and check if it was newly marked
+                        if mark_attendance(name, subject) and app:
+                            # Update shared state for the web toast
+                            app.last_event = {"user": name, "timestamp": time.time()}
 
-                # Use the faster HOG model for CPU-based detection
-                face_locations = face_recognition.face_locations(rgb_small_frame, model="hog")
-                face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
+                top, right, bottom, left = top*4, right*4, bottom*4, left*4
+                new_recognized_faces.append((top, right, bottom, left, name))
+            recognized_faces = new_recognized_faces
 
-                new_recognized_faces = []
+        for (top, right, bottom, left, name) in recognized_faces:
+            cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
+            cv2.putText(frame, name, (left, max(0, top-10)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-                for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
-                    name = "Unknown"
+        # Encode frame as JPEG
+        ret, buffer = cv2.imencode('.jpg', frame)
+        frame_bytes = buffer.tobytes()
 
-                    matches = face_recognition.compare_faces(known_encodings, face_encoding)
-                    if any(matches):
-                        distances = face_recognition.face_distance(known_encodings, face_encoding)
-                        best_idx = int(np.argmin(distances))
-                        if matches[best_idx]:
-                            name = known_labels[best_idx]
+        # Yield the output frame in byte format
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
-                    # Scale face locations back up since we detected on a 1/4 size frame
-                    top *= 4
-                    right *= 4
-                    bottom *= 4
-                    left *= 4
-
-                    new_recognized_faces.append((top, right, bottom, left, name))
-
-                recognized_faces = new_recognized_faces
-
-            # Draw the most recently recognized faces on the full-size frame
-            for (top, right, bottom, left, name) in recognized_faces:
-                cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
-                cv2.putText(
-                    frame,
-                    name,
-                    (left, max(0, top - 10)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    (0, 255, 0),
-                    2,
-                )
-
-            cv2.imshow("Face Recognition - Press 'q' to quit", frame)
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
-    finally:
-        cap.release()
-        cv2.destroyAllWindows()
-
-    return True
+    cap.release()

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+    <h1>Welcome to FRAS</h1>
+    <p>This is a real-time Face Recognition Attendance System designed for educational environments.</p>
+    <hr>
+    <h3>System Overview</h3>
+    <ul>
+        <li><strong>Register User:</strong> Add new students/staff and capture their face data.</li>
+        <li><strong>Start Attendance:</strong> Launch the webcam to mark attendance for a specific subject.</li>
+        <li><strong>Dashboard:</strong> View today's attendance records and system statistics.</li>
+    </ul>
+    <div style="margin-top: 30px;">
+        <a href="{{ url_for('start_attendance') }}" class="btn btn-success">Mark Attendance Now</a>
+        <a href="{{ url_for('register') }}" class="btn">New User Registration</a>
+    </div>
+{% endblock %}

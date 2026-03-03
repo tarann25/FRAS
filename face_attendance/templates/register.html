@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+    <h1>Register New User</h1>
+    <p>Please enter the student's ID and Name to begin the registration process.</p>
+    <form method="POST">
+        <div style="margin-bottom: 15px;">
+            <label for="user_id"><strong>User ID:</strong> (Unique, e.g., Student Roll No)</label><br>
+            <input type="text" id="user_id" name="user_id" required style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc; margin-top: 5px;">
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label for="name"><strong>Full Name:</strong></label><br>
+            <input type="text" id="name" name="name" required style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc; margin-top: 5px;">
+        </div>
+        <p><small>Note: Clicking "Register" will open the webcam to capture face samples (10 samples).</small></p>
+        <button type="submit" class="btn btn-success">Start Capture & Register</button>
+    </form>
+{% endblock %}
