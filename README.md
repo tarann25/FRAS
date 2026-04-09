@@ -1,36 +1,36 @@
-## Running the Face Attendance System
+# Face Recognition Attendance System (FRAS)
 
-To set up the environment and run the system, execute these commands from the project root.
+## How to Run
 
-### On macOS / Linux
+### 1. Initial Setup
+Run the setup script to install dependencies and create the virtual environment.
 
-**Setup:**
-
-```bash
+**Windows:**
+```cmd
 python setup_env.py
 ```
 
-**Run:**
+**macOS / Linux:**
+```bash
+python3 setup_env.py
+```
 
+### 2. Start the Application
+Activate the environment and run the Flask server.
+
+**Windows:**
+```cmd
+.venv\Scripts\activate
+cd face_attendance
+python app.py
+```
+
+**macOS / Linux:**
 ```bash
 source .venv/bin/activate
-python face_attendance/test_register.py
+cd face_attendance
+python3 app.py
 ```
 
-### On Windows (PowerShell or CMD)
-
-**Setup:**
-
-```bash
-python setup_env.py
-```
-
-**Run:**
-
-```bash
-.venv\Scripts\activate
-python face_attendance\test_register.py
-```
-
-These commands will create the virtual environment, install all dependencies, and start the registration script.
-
+### 3. Open in Browser
+Navigate to [http://127.0.0.1:5000](http://127.0.0.1:5000)
