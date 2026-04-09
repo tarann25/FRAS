@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+    .card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        text-decoration: none;
+        color: var(--text-main);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        border-color: var(--primary);
+    }
+    .card-title {
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: var(--primary);
+    }
+    .card-subtitle {
+        color: var(--text-muted);
+        font-size: 1rem;
+    }
+</style>
+
+<h2>Select a Batch to Mark Attendance</h2>
+<p>Choose one of your registered batches to start the attendance session.</p>
+
+{% if batches %}
+<div class="grid">
+    {% for batch in batches %}
+    <a href="{{ url_for('attendance_viewfinder', batch_id=batch.id) }}" class="card">
+        <div class="card-title">{{ batch.batch_name }}</div>
+        <div class="card-subtitle">{{ batch.subject }}</div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-error" style="margin-top: 20px;">
+    No batches registered yet. Please register a batch first.
+</div>
+{% endif %}
+{% endblock %}

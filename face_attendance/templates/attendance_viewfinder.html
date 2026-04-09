@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    #toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+    }
+    .toast {
+        background-color: var(--success);
+        color: white;
+        padding: 15px 25px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        display: none;
+        font-weight: bold;
+        animation: fadeInOut 4s forwards;
+    }
+    @keyframes fadeInOut {
+        0% { opacity: 0; transform: translateY(-20px); }
+        10% { opacity: 1; transform: translateY(0); }
+        90% { opacity: 1; transform: translateY(0); }
+        100% { opacity: 0; transform: translateY(-20px); }
+    }
+</style>
+
+<div id="toast-container"></div>
+
+<div style="text-align: center;">
+    <h2>Starting Attendance for Batch {{ batch.batch_name }}</h2>
+    <p>Subject: {{ batch.subject }}</p>
+    
+    <div style="border: 5px solid var(--primary); border-radius: 8px; display: inline-block; overflow: hidden; background-color: #000; margin: 20px 0;">
+        <img src="{{ url_for('attendance_video_feed', batch_id=batch.id) }}" width="640" height="480" style="display: block;">
+    </div>
+    
+    <p>Students can step in front of the camera. The system will continuously recognize and mark them present.</p>
+    
+    <div style="margin-top: 20px;">
+        <a href="{{ url_for('attendance_summary', batch_id=batch.id) }}" class="btn btn-large btn-success">Complete Attendance</a>
+    </div>
+</div>
+
+<script>
+    let lastTimestamp = 0;
+
+    function checkNotifications() {
+        fetch('/get_last_event')
+            .then(response => response.json())
+            .then(data => {
+                if (data.enrollment && data.timestamp > lastTimestamp) {
+                    showToast(`Attendance marked for ${data.enrollment}! Next student please.`);
+                    lastTimestamp = data.timestamp;
+                }
+            });
+    }
+
+    function showToast(message) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.innerText = message;
+        toast.style.display = 'block';
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 4000);
+    }
+
+    // Poll every 1 second
+    setInterval(checkNotifications, 1000);
+</script>
+{% endblock %}

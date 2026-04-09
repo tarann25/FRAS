@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .status-Present {
+        color: #166534;
+        background-color: #dcfce7;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-weight: bold;
+    }
+    .status-Absent {
+        color: #991b1b;
+        background-color: #fee2e2;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-weight: bold;
+    }
+</style>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2>Attendance Summary</h2>
+        <p><strong>Batch:</strong> {{ batch.batch_name }} | <strong>Subject:</strong> {{ batch.subject }}</p>
+    </div>
+    <a href="{{ url_for('index') }}" class="btn">Return Home</a>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Enrollment Number</th>
+            <th>Student Name</th>
+            <th>Time Marked</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in summary %}
+        <tr>
+            <td>{{ row.enrollment_number }}</td>
+            <td>{{ row.name }}</td>
+            <td>{{ row.time if row.time else '-' }}</td>
+            <td><span class="status-{{ row.status }}">{{ row.status }}</span></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if summary|length == 0 %}
+<div class="alert alert-error" style="margin-top: 20px;">
+    No students found in this batch.
+</div>
+{% endif %}
+
+{% endblock %}

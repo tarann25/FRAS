@@ -1,4 +1,3 @@
-# Database utilities
 import sqlite3
 import datetime
 import os
@@ -17,25 +16,40 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # TABLE 1 — users
+    # TABLE 1 - batches
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id TEXT PRIMARY KEY,
-            name TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        CREATE TABLE IF NOT EXISTS batches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            batch_name TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(batch_name, subject)
         )
     ''')
     
-    # TABLE 2 — attendance (added 'subject' column)
+    # TABLE 2 - users (students)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            batch_id INTEGER NOT NULL,
+            enrollment_number TEXT NOT NULL,
+            name TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (batch_id) REFERENCES batches (id),
+            UNIQUE(batch_id, enrollment_number)
+        )
+    ''')
+    
+    # TABLE 3 - attendance
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS attendance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT,
-            subject TEXT,
-            date DATE,
-            time TIME,
-            status TEXT,
-            FOREIGN KEY (user_id) REFERENCES users (id)
+            batch_id INTEGER NOT NULL,
+            enrollment_number TEXT NOT NULL,
+            date DATE NOT NULL,
+            time TIME NOT NULL,
+            status TEXT NOT NULL,
+            FOREIGN KEY (batch_id) REFERENCES batches (id)
         )
     ''')
     
@@ -43,56 +57,108 @@ def init_db():
     conn.close()
     print(f"[INFO] Database initialized at {DB_PATH}")
 
-def add_user(user_id, name):
-    """Adds a new user to the users table."""
+def create_batch(batch_name, subject):
+    """Creates a new batch and returns its ID."""
     conn = get_db_connection()
+    cursor = conn.cursor()
     try:
-        conn.execute('INSERT INTO users (id, name) VALUES (?, ?)', (user_id, name))
+        cursor.execute('INSERT INTO batches (batch_name, subject) VALUES (?, ?)', (batch_name, subject))
         conn.commit()
-        print(f"[SUCCESS] User {name} (ID: {user_id}) added to database.")
+        batch_id = cursor.lastrowid
+        print(f"[SUCCESS] Batch '{batch_name}' for subject '{subject}' added (ID: {batch_id}).")
+        return batch_id
     except sqlite3.IntegrityError:
-        print(f"[ERROR] User ID {user_id} already exists in database.")
+        print(f"[ERROR] Batch {batch_name} with subject {subject} already exists.")
+        # Fetch the existing batch id
+        cursor.execute('SELECT id FROM batches WHERE batch_name=? AND subject=?', (batch_name, subject))
+        return cursor.fetchone()['id']
     finally:
         conn.close()
 
-def mark_attendance(user_id, subject="General"):
-    """Marks attendance for a user for a specific subject, preventing duplicates for the same day/subject."""
+def get_batches():
+    """Returns all created batches."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM batches ORDER BY created_at DESC')
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def get_batch_by_id(batch_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM batches WHERE id=?', (batch_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row
+
+def add_user(batch_id, enrollment_number, name):
+    """Adds a new student to a specific batch."""
+    conn = get_db_connection()
+    try:
+        conn.execute('INSERT INTO users (batch_id, enrollment_number, name) VALUES (?, ?, ?)', (batch_id, enrollment_number, name))
+        conn.commit()
+        print(f"[SUCCESS] User {name} (Enrollment: {enrollment_number}) added to batch {batch_id}.")
+        return True
+    except sqlite3.IntegrityError:
+        print(f"[ERROR] User {enrollment_number} already exists in batch {batch_id}.")
+        return False
+    finally:
+        conn.close()
+
+def get_users_by_batch(batch_id):
+    """Returns all users registered for a specific batch."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM users WHERE batch_id=? ORDER BY name', (batch_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def mark_attendance(batch_id, enrollment_number):
+    """Marks attendance for a user in a batch for the current day."""
     today = datetime.date.today().isoformat()
     now = datetime.datetime.now().strftime("%H:%M:%S")
     
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Check if attendance is already marked for this user, date, AND subject
-    cursor.execute('SELECT * FROM attendance WHERE user_id=? AND date=? AND subject=?', (user_id, today, subject))
+    # Check if already marked today
+    cursor.execute('SELECT * FROM attendance WHERE batch_id=? AND enrollment_number=? AND date=?', (batch_id, enrollment_number, today))
     if cursor.fetchone() is None:
         cursor.execute(
-            'INSERT INTO attendance (user_id, subject, date, time, status) VALUES (?, ?, ?, ?, ?)',
-            (user_id, subject, today, now, 'Present')
+            'INSERT INTO attendance (batch_id, enrollment_number, date, time, status) VALUES (?, ?, ?, ?, ?)',
+            (batch_id, enrollment_number, today, now, 'Present')
         )
         conn.commit()
-        print(f"[SUCCESS] Attendance marked for {user_id} in {subject} at {now}")
+        print(f"[SUCCESS] Attendance marked for {enrollment_number} in batch {batch_id} at {now}")
         conn.close()
         return True
     else:
-        # Already marked for this subject today
         conn.close()
         return False
 
-def get_today_attendance():
-    """Returns all attendance records for the current date."""
-    today = datetime.date.today().isoformat()
+def get_attendance_summary(batch_id, date=None):
+    """Returns all users in a batch with their attendance status for a specific date (defaults to today)."""
+    if date is None:
+        date = datetime.date.today().isoformat()
+        
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Join with users table to get the user's name
+    # Left join to get all users and their attendance if it exists for the given date
     query = '''
-        SELECT a.user_id, u.name, a.subject, a.date, a.time, a.status 
-        FROM attendance a
-        JOIN users u ON a.user_id = u.id
-        WHERE a.date = ?
+        SELECT u.enrollment_number, u.name,
+               CASE WHEN a.status IS NOT NULL THEN 'Present' ELSE 'Absent' END as status,
+               a.time
+        FROM users u
+        LEFT JOIN attendance a ON u.enrollment_number = a.enrollment_number 
+                               AND a.batch_id = ? 
+                               AND a.date = ?
+        WHERE u.batch_id = ?
+        ORDER BY u.name
     '''
-    cursor.execute(query, (today,))
+    cursor.execute(query, (batch_id, date, batch_id))
     rows = cursor.fetchall()
     conn.close()
     return rows

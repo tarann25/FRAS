@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="max-width: 500px; margin: 0 auto;">
+    <h2>Register a New Batch</h2>
+    <p>Create a new batch for your subject. You will add students to this batch in the next step.</p>
+
+    <form method="POST" style="margin-top: 30px;">
+        <div class="form-group">
+            <label for="batch_name">Batch Name</label>
+            <input type="text" id="batch_name" name="batch_name" placeholder="e.g. B14, CS-A" required>
+        </div>
+        <div class="form-group">
+            <label for="subject">Subject</label>
+            <input type="text" id="subject" name="subject" placeholder="e.g. Mathematics, Physics" required>
+        </div>
+        <button type="submit" class="btn" style="width: 100%;">Start Registering Students</button>
+    </form>
+</div>
+{% endblock %}

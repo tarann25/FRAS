@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="text-align: center; padding: 40px 0;">
+    <div style="font-size: 4rem; margin-bottom: 20px;">✅</div>
+    <h2>Registration Complete</h2>
+    <p style="font-size: 1.2rem; max-width: 600px; margin: 0 auto 30px auto;">
+        Registration of <strong>{{ count }}</strong> students of batch <strong>{{ batch.batch_name }}</strong> ({{ batch.subject }}) is completed and their faces have been encoded.
+    </p>
+
+    <a href="{{ url_for('index') }}" class="btn btn-large">Go to Home Page</a>
+</div>
+{% endblock %}

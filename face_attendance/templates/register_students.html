@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .registration-container {
+        display: flex;
+        gap: 30px;
+        align-items: flex-start;
+    }
+    .video-section {
+        flex: 1;
+        background: #000;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 4px solid var(--secondary);
+    }
+    .video-section img {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+    .form-section {
+        flex: 1;
+        background: #f8fafc;
+        padding: 20px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+    }
+    #notification {
+        display: none;
+        padding: 10px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+        background-color: #dcfce7;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+    #actions {
+        display: none;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #e2e8f0;
+    }
+</style>
+
+<h2>Register Students: {{ batch.batch_name }} ({{ batch.subject }})</h2>
+<p>Enter the student details and click Register. The system will capture 10 frames of their face automatically.</p>
+
+<div class="registration-container">
+    <div class="video-section">
+        <img src="{{ url_for('registration_video_feed', batch_name=batch.batch_name, subject=batch.subject) }}" alt="Camera Feed">
+    </div>
+    
+    <div class="form-section">
+        <div id="notification">Student registered successfully!</div>
+        
+        <form id="studentForm">
+            <div class="form-group">
+                <label for="name">Student Name</label>
+                <input type="text" id="name" required>
+            </div>
+            <div class="form-group">
+                <label for="enrollment">Enrollment Number</label>
+                <input type="text" id="enrollment" required>
+            </div>
+            <button type="submit" id="submitBtn" class="btn" style="width: 100%;">Register Student (Capture)</button>
+        </form>
+
+        <div id="actions">
+            <button type="button" id="nextBtn" class="btn btn-secondary" style="width: 100%; margin-bottom: 10px;">Register Next Student</button>
+            <form action="{{ url_for('complete_registration', batch_id=batch.id) }}" method="POST">
+                <button type="submit" class="btn btn-success" style="width: 100%;">Complete Registration (Encode)</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const form = document.getElementById('studentForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const notification = document.getElementById('notification');
+    const actions = document.getElementById('actions');
+    const nextBtn = document.getElementById('nextBtn');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const name = document.getElementById('name').value;
+        const enrollment = document.getElementById('enrollment').value;
+        
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Capturing... Please wait.';
+
+        const response = await fetch('/capture_student', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                batch_id: {{ batch.id }},
+                batch_name: '{{ batch.batch_name }}',
+                subject: '{{ batch.subject }}',
+                name: name,
+                enrollment: enrollment
+            })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            pollStatus(data.req_key);
+        } else {
+            alert(data.error);
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Register Student (Capture)';
+        }
+    });
+
+    async function pollStatus(reqKey) {
+        const interval = setInterval(async () => {
+            const res = await fetch(`/capture_status/${reqKey}`);
+            const statusData = await res.json();
+            
+            if (statusData.done) {
+                clearInterval(interval);
+                // Success!
+                submitBtn.style.display = 'none';
+                notification.style.display = 'block';
+                actions.style.display = 'block';
+            }
+        }, 500); // poll every 500ms
+    }
+
+    nextBtn.addEventListener('click', () => {
+        document.getElementById('name').value = '';
+        document.getElementById('enrollment').value = '';
+        notification.style.display = 'none';
+        actions.style.display = 'none';
+        submitBtn.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Register Student (Capture)';
+        document.getElementById('name').focus();
+    });
+</script>
+{% endblock %}
