@@ -27,10 +27,11 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS batches (
             id SERIAL PRIMARY KEY,
+            teacher_id UUID NOT NULL,
             batch_name TEXT NOT NULL,
             subject TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(batch_name, subject)
+            UNIQUE(teacher_id, batch_name, subject)
         )
     ''')
     
@@ -63,34 +64,34 @@ def init_db():
     conn.close()
     print("[INFO] PostgreSQL Database initialized successfully.")
 
-def create_batch(batch_name, subject):
-    """Creates a new batch and returns its ID."""
+def create_batch(batch_name, subject, teacher_id):
+    """Creates a new batch for a specific teacher and returns its ID."""
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     try:
         cursor.execute(
-            'INSERT INTO batches (batch_name, subject) VALUES (%s, %s) RETURNING id', 
-            (batch_name, subject)
+            'INSERT INTO batches (teacher_id, batch_name, subject) VALUES (%s, %s, %s) RETURNING id', 
+            (teacher_id, batch_name, subject)
         )
         conn.commit()
         batch_id = cursor.fetchone()['id']
-        print(f"[SUCCESS] Batch '{batch_name}' for subject '{subject}' added (ID: {batch_id}).")
+        print(f"[SUCCESS] Batch '{batch_name}' for subject '{subject}' added by {teacher_id}.")
         return batch_id
     except psycopg2.IntegrityError:
         conn.rollback()
-        print(f"[ERROR] Batch {batch_name} with subject {subject} already exists.")
+        print(f"[ERROR] Batch {batch_name} with subject {subject} already exists for this teacher.")
         # Fetch the existing batch id
-        cursor.execute('SELECT id FROM batches WHERE batch_name=%s AND subject=%s', (batch_name, subject))
+        cursor.execute('SELECT id FROM batches WHERE teacher_id=%s AND batch_name=%s AND subject=%s', (teacher_id, batch_name, subject))
         return cursor.fetchone()['id']
     finally:
         cursor.close()
         conn.close()
 
-def get_batches():
-    """Returns all created batches."""
+def get_batches(teacher_id):
+    """Returns all created batches for a specific teacher."""
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cursor.execute('SELECT * FROM batches ORDER BY created_at DESC')
+    cursor.execute('SELECT * FROM batches WHERE teacher_id=%s ORDER BY created_at DESC', (teacher_id,))
     rows = cursor.fetchall()
     cursor.close()
     conn.close()

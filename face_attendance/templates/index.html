@@ -6,6 +6,7 @@
         Manage your class attendance automatically using Facial Recognition. Get started by creating a new batch or mark attendance for an existing one.
     </p>
 
+    {% if session.get('user') %}
     <div style="display: flex; justify-content: center; gap: 20px;">
         <a href="{{ url_for('register_batch') }}" class="btn btn-large" style="width: 250px;">
             <div style="font-size: 1.5rem; margin-bottom: 10px;">📝</div>
@@ -16,5 +17,17 @@
             Mark attendance for existing batch
         </a>
     </div>
+    {% else %}
+    <div style="display: flex; justify-content: center; gap: 20px; flex-direction: column; align-items: center;">
+        <div class="alert alert-success" style="max-width: 400px; text-align: left;">
+            🔒 <strong>Secure Access Required</strong><br>
+            Please log in or create an account to access the teacher dashboard.
+        </div>
+        <div style="display: flex; gap: 15px;">
+            <a href="{{ url_for('login') }}" class="btn btn-large">Log In</a>
+            <a href="{{ url_for('register_teacher') }}" class="btn btn-large btn-secondary">Sign Up</a>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

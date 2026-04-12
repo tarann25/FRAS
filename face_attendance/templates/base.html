@@ -98,8 +98,15 @@
     <nav>
         <a href="{{ url_for('index') }}" class="nav-brand">FRAS - Teacher Dashboard</a>
         <div class="nav-links">
-            <a href="{{ url_for('register_batch') }}">Register New Batch</a>
-            <a href="{{ url_for('mark_attendance') }}">Mark Attendance</a>
+            {% if session.get('user') %}
+                <span style="color: #94a3b8; margin-right: 15px;">👤 {{ session['user']['name'] }}</span>
+                <a href="{{ url_for('register_batch') }}">Register New Batch</a>
+                <a href="{{ url_for('mark_attendance') }}">Mark Attendance</a>
+                <a href="{{ url_for('logout') }}" style="color: #fca5a5;">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Login</a>
+                <a href="{{ url_for('register_teacher') }}" class="btn" style="padding: 6px 15px; margin-left: 15px; display: inline-block;">Sign Up</a>
+            {% endif %}
         </div>
     </nav>
     <div class="container">
