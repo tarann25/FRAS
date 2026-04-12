@@ -1,25 +1,32 @@
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import datetime
 import os
+from dotenv import load_dotenv
 
-# Database file path
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'database.db')
+# Load environment variables from .env file
+load_dotenv()
+
+# Database connection string from Supabase
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def get_db_connection():
-    """Establishes and returns a connection to the SQLite database."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    """Establishes and returns a connection to the PostgreSQL database."""
+    if not DATABASE_URL:
+        raise ValueError("DATABASE_URL environment variable is not set. Please check your .env file.")
+    
+    conn = psycopg2.connect(DATABASE_URL)
     return conn
 
 def init_db():
-    """Creates the necessary tables if they don't already exist."""
+    """Creates the necessary tables in PostgreSQL if they don't already exist."""
     conn = get_db_connection()
     cursor = conn.cursor()
     
     # TABLE 1 - batches
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS batches (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             batch_name TEXT NOT NULL,
             subject TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -30,12 +37,11 @@ def init_db():
     # TABLE 2 - users (students)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            batch_id INTEGER NOT NULL,
+            id SERIAL PRIMARY KEY,
+            batch_id INTEGER NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
             enrollment_number TEXT NOT NULL,
             name TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (batch_id) REFERENCES batches (id),
             UNIQUE(batch_id, enrollment_number)
         )
     ''')
@@ -43,108 +49,127 @@ def init_db():
     # TABLE 3 - attendance
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS attendance (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            batch_id INTEGER NOT NULL,
+            id SERIAL PRIMARY KEY,
+            batch_id INTEGER NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
             enrollment_number TEXT NOT NULL,
             date DATE NOT NULL,
             time TIME NOT NULL,
-            status TEXT NOT NULL,
-            FOREIGN KEY (batch_id) REFERENCES batches (id)
+            status TEXT NOT NULL
         )
     ''')
     
     conn.commit()
+    cursor.close()
     conn.close()
-    print(f"[INFO] Database initialized at {DB_PATH}")
+    print("[INFO] PostgreSQL Database initialized successfully.")
 
 def create_batch(batch_name, subject):
     """Creates a new batch and returns its ID."""
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     try:
-        cursor.execute('INSERT INTO batches (batch_name, subject) VALUES (?, ?)', (batch_name, subject))
+        cursor.execute(
+            'INSERT INTO batches (batch_name, subject) VALUES (%s, %s) RETURNING id', 
+            (batch_name, subject)
+        )
         conn.commit()
-        batch_id = cursor.lastrowid
+        batch_id = cursor.fetchone()['id']
         print(f"[SUCCESS] Batch '{batch_name}' for subject '{subject}' added (ID: {batch_id}).")
         return batch_id
-    except sqlite3.IntegrityError:
+    except psycopg2.IntegrityError:
+        conn.rollback()
         print(f"[ERROR] Batch {batch_name} with subject {subject} already exists.")
         # Fetch the existing batch id
-        cursor.execute('SELECT id FROM batches WHERE batch_name=? AND subject=?', (batch_name, subject))
+        cursor.execute('SELECT id FROM batches WHERE batch_name=%s AND subject=%s', (batch_name, subject))
         return cursor.fetchone()['id']
     finally:
+        cursor.close()
         conn.close()
 
 def get_batches():
     """Returns all created batches."""
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cursor.execute('SELECT * FROM batches ORDER BY created_at DESC')
     rows = cursor.fetchall()
+    cursor.close()
     conn.close()
     return rows
 
 def get_batch_by_id(batch_id):
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM batches WHERE id=?', (batch_id,))
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute('SELECT * FROM batches WHERE id=%s', (batch_id,))
     row = cursor.fetchone()
+    cursor.close()
     conn.close()
     return row
 
 def add_user(batch_id, enrollment_number, name):
     """Adds a new student to a specific batch."""
     conn = get_db_connection()
+    cursor = conn.cursor()
     try:
-        conn.execute('INSERT INTO users (batch_id, enrollment_number, name) VALUES (?, ?, ?)', (batch_id, enrollment_number, name))
+        cursor.execute(
+            'INSERT INTO users (batch_id, enrollment_number, name) VALUES (%s, %s, %s)', 
+            (batch_id, enrollment_number, name)
+        )
         conn.commit()
         print(f"[SUCCESS] User {name} (Enrollment: {enrollment_number}) added to batch {batch_id}.")
         return True
-    except sqlite3.IntegrityError:
+    except psycopg2.IntegrityError:
+        conn.rollback()
         print(f"[ERROR] User {enrollment_number} already exists in batch {batch_id}.")
         return False
     finally:
+        cursor.close()
         conn.close()
 
 def get_users_by_batch(batch_id):
     """Returns all users registered for a specific batch."""
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM users WHERE batch_id=? ORDER BY name', (batch_id,))
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute('SELECT * FROM users WHERE batch_id=%s ORDER BY name', (batch_id,))
     rows = cursor.fetchall()
+    cursor.close()
     conn.close()
     return rows
 
 def mark_attendance(batch_id, enrollment_number):
     """Marks attendance for a user in a batch for the current day."""
-    today = datetime.date.today().isoformat()
-    now = datetime.datetime.now().strftime("%H:%M:%S")
+    today = datetime.date.today()
+    now = datetime.datetime.now().time()
     
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     
     # Check if already marked today
-    cursor.execute('SELECT * FROM attendance WHERE batch_id=? AND enrollment_number=? AND date=?', (batch_id, enrollment_number, today))
+    cursor.execute(
+        'SELECT * FROM attendance WHERE batch_id=%s AND enrollment_number=%s AND date=%s', 
+        (batch_id, enrollment_number, today)
+    )
     if cursor.fetchone() is None:
         cursor.execute(
-            'INSERT INTO attendance (batch_id, enrollment_number, date, time, status) VALUES (?, ?, ?, ?, ?)',
+            'INSERT INTO attendance (batch_id, enrollment_number, date, time, status) VALUES (%s, %s, %s, %s, %s)',
             (batch_id, enrollment_number, today, now, 'Present')
         )
         conn.commit()
         print(f"[SUCCESS] Attendance marked for {enrollment_number} in batch {batch_id} at {now}")
+        cursor.close()
         conn.close()
         return True
     else:
+        cursor.close()
         conn.close()
         return False
 
 def get_attendance_summary(batch_id, date=None):
     """Returns all users in a batch with their attendance status for a specific date (defaults to today)."""
     if date is None:
-        date = datetime.date.today().isoformat()
+        date = datetime.date.today()
         
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     
     # Left join to get all users and their attendance if it exists for the given date
     query = '''
@@ -153,12 +178,23 @@ def get_attendance_summary(batch_id, date=None):
                a.time
         FROM users u
         LEFT JOIN attendance a ON u.enrollment_number = a.enrollment_number 
-                               AND a.batch_id = ? 
-                               AND a.date = ?
-        WHERE u.batch_id = ?
+                               AND a.batch_id = %s 
+                               AND a.date = %s
+        WHERE u.batch_id = %s
         ORDER BY u.name
     '''
     cursor.execute(query, (batch_id, date, batch_id))
     rows = cursor.fetchall()
+    
+    # Format times for display if present
+    formatted_rows = []
+    for row in rows:
+        row_dict = dict(row)
+        if row_dict['time']:
+            # Format time to HH:MM:SS string for frontend
+            row_dict['time'] = row_dict['time'].strftime("%H:%M:%S")
+        formatted_rows.append(row_dict)
+        
+    cursor.close()
     conn.close()
-    return rows
+    return formatted_rows

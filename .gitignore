@@ -1,0 +1,16 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# FRAS Database and Caching
+database.db
+face_attendance/dataset/
+face_attendance/encodings/
+*.pkl
+__pycache__/
+*.pyc

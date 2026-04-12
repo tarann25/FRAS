@@ -67,8 +67,8 @@
 
         <div id="actions">
             <button type="button" id="nextBtn" class="btn btn-secondary" style="width: 100%; margin-bottom: 10px;">Register Next Student</button>
-            <form action="{{ url_for('complete_registration', batch_id=batch.id) }}" method="POST">
-                <button type="submit" class="btn btn-success" style="width: 100%;">Complete Registration (Encode)</button>
+            <form id="completeForm" action="{{ url_for('complete_registration', batch_id=batch.id) }}" method="POST">
+                <button type="submit" id="completeBtn" class="btn btn-success" style="width: 100%;">Complete Registration (Encode)</button>
             </form>
         </div>
     </div>
@@ -76,10 +76,20 @@
 
 <script>
     const form = document.getElementById('studentForm');
+    const completeForm = document.getElementById('completeForm');
     const submitBtn = document.getElementById('submitBtn');
+    const completeBtn = document.getElementById('completeBtn');
     const notification = document.getElementById('notification');
     const actions = document.getElementById('actions');
     const nextBtn = document.getElementById('nextBtn');
+
+    completeForm.addEventListener('submit', () => {
+        completeBtn.disabled = true;
+        completeBtn.innerText = 'Encoding Faces... Please wait.';
+        // Stop the live video stream so the server can dedicate 100% of CPU to the encoding task!
+        const img = document.querySelector('.video-section img');
+        if (img) img.src = '';
+    });
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();

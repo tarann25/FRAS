@@ -1,3 +1,8 @@
+import os
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+
 from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify
 from utils.db_utils import init_db, create_batch, get_batches, get_batch_by_id, add_user, get_users_by_batch, get_attendance_summary
 from utils.face_utils import encode_batch_faces, generate_face_recognition_frames, generate_registration_frames, CAPTURE_REQUESTS
@@ -126,4 +131,6 @@ def attendance_summary(batch_id):
     return render_template('attendance_summary.html', batch=batch, summary=summary)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Disable the reloader as it notoriously crashes heavy C-extensions (like dlib).
+    # We MUST keep threaded=True so the video stream doesn't block AJAX requests.
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False, threaded=True)
